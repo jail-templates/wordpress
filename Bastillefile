@@ -13,7 +13,7 @@ CMD ${MYSQL} -u root -e "FLUSH PRIVILEGES"
 CMD ${CURL} https://wordpress.org/latest.zip --output /tmp/latest.zip
 CMD ${UNZIP} /tmp/latest.zip -d /usr/local/www
 
-touch /usr/local/www/wordpress/wp-config.php
+CMD touch /usr/local/www/wordpress/wp-config.php
 CMD chmod 440 /usr/local/www/wordpress/wp-config.php
 CMD printf "<?php\n// ** Database settings ** //\n/** The name of the database for WordPress */\ndefine( 'DB_NAME', 'wordpress' );\n\n" > /usr/local/www/wordpress/wp-config.php
 CMD printf "/** Database username */\ndefine( 'DB_USER', 'wordpress' );\n\n" >> /usr/local/www/wordpress/wp-config.php
