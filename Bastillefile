@@ -1,4 +1,14 @@
+rm -rf /usr/local/www/wordpress
+
 PKG curl
+
+ARG MYSQL_PASSWORD="$(openssl rand -base64 30 | tr -cd '[:alnum:]')"
+
+CMD mysql -u root -e "CREATE DATABASE wordpress"
+CMD mysql -u root -e "CREATE USER wordpress"
+CMD mysql -u root -e "GRANT ALL PRIVILEGES ON wordpress.* TO wordpress@localhost IDENTIFIED BY '${MYSQL_PASSWORD}'"
+CMD mysql -u root -e "FLUSH PRIVILEGES"
+
 
 mkdir /usr/local/www/wordpress
 CMD printf "<?php\n// ** Database settings ** //\n/** The name of the database for WordPress */\ndefine( 'DB_NAME', 'wordpress' );\n\n" > /usr/local/www/wordpress/wp-config.php
@@ -10,11 +20,11 @@ CMD printf "/** The database collate type. Don't change this if in doubt. */\nde
 CMD printf "/**#@+\n * Authentication unique keys and salts.\n * Change these to different unique phrases! You can generate these using\n * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.\n * You can change these at any point in time to invalidate all existing cookies.\n * This will force all users to have to log in again.\n */\n"
 CMD curl https://api.wordpress.org/secret-key/1.1/salt/ >> /usr/local/www/wordpress/wp-config.php
 CMD printf "/**#@-*/\n\n"
-CMD printf "/* WordPress database table prefix. */\n$table_prefix = 'wp_';\n\n"
-CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n"
-CMD printf "/* Add any custom values between this line and the "stop editing" line. */\ndefine('FS_METHOD', 'direct');\n/* That's all, stop editing! Happy publishing. */\n\n"
-CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n"
-CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n"
+CMD printf "/* WordPress database table prefix. */\n$table_prefix = 'wp_';\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/* Add any custom values between this line and the "stop editing" line. */\ndefine('FS_METHOD', 'direct');\n/* That's all, stop editing! Happy publishing. */\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n" >> /usr/local/www/wordpress/wp-config.php
 
 
 #CMD mysql -u root -e "DELETE FROM mysql.user WHERE User=''"
