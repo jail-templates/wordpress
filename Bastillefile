@@ -1,0 +1,24 @@
+PKG curl
+
+mkdir /usr/local/www/wordpress
+CMD printf "<?php\n// ** Database settings ** //\n/** The name of the database for WordPress */\ndefine( 'DB_NAME', 'wordpress' );\n\n" > /usr/local/www/wordpress/wp-config.php
+CMD printf "/** Database username */\ndefine( 'DB_USER', 'wordpress' );\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/** Database password */\ndefine( 'DB_PASSWORD', '${MYSQL_PASSWORD}' );\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/** Database hostname */\ndefine( 'DB_HOST', '127.0.0.1' );\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/** Database charset to use in creating database tables. */\ndefine( 'DB_CHARSET', 'utf8mb4' );\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/** The database collate type. Don't change this if in doubt. */\ndefine( 'DB_COLLATE', '' );\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/**#@+\n * Authentication unique keys and salts.\n * Change these to different unique phrases! You can generate these using\n * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.\n * You can change these at any point in time to invalidate all existing cookies.\n * This will force all users to have to log in again.\n */\n"
+CMD curl https://api.wordpress.org/secret-key/1.1/salt/ >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/**#@-*/\n\n"
+CMD printf "/* WordPress database table prefix. */\n$table_prefix = 'wp_';\n\n"
+CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n"
+CMD printf "/* Add any custom values between this line and the "stop editing" line. */\ndefine('FS_METHOD', 'direct');\n/* That's all, stop editing! Happy publishing. */\n\n"
+CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n"
+CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n"
+
+
+#CMD mysql -u root -e "DELETE FROM mysql.user WHERE User=''"
+#CMD mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1')"
+#CMD mysql -u root -e "DROP DATABASE IF EXISTS test"
+#CMD mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'"
+#CMD mysql -u root -e "FLUSH PRIVILEGES"
