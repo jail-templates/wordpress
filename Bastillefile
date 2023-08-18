@@ -24,7 +24,7 @@ CMD printf "/** The database collate type. Don't change this if in doubt. */\nde
 CMD printf "/**#@+\n * Authentication unique keys and salts.\n * Change these to different unique phrases! You can generate these using\n * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.\n * You can change these at any point in time to invalidate all existing cookies.\n * This will force all users to have to log in again.\n */\n" >> /usr/local/www/wordpress/wp-config.php
 CMD ${CURL} https://api.wordpress.org/secret-key/1.1/salt/ >> /usr/local/www/wordpress/wp-config.php
 CMD printf "/**#@-*/\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/* WordPress database table prefix. */\n$table_prefix = 'wp_';\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD printf "/* WordPress database table prefix. */\ntable_prefix = 'wp_';\n\n" >> /usr/local/www/wordpress/wp-config.php
 CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n" >> /usr/local/www/wordpress/wp-config.php
 CMD printf "/* Add any custom values between this line and the 'stop editing' line. */\ndefine('FS_METHOD', 'direct');\n/* That's all, stop editing! Happy publishing. */\n\n" >> /usr/local/www/wordpress/wp-config.php
 CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n" >> /usr/local/www/wordpress/wp-config.php
@@ -41,13 +41,4 @@ CMD chown root:wheel /root/.wordpress
 CMD chmod 440 /root/.wordpress
 CMD printf "Database name:       wordpress\nDatabase user:       wordpress\nDatabase password:   ${MYSQL_PASSWORD}\nDatabase host:       ${JAIL_IP}\n" > /root/.wordpress
 
-CMD printf "*******************************************************************\n"
-CMD printf "* A Wordpress database was automatically created:\n"
-CMD printf "*   Database name:       wordpress\n"
-CMD printf "*   Database user:       wordpress\n"
-CMD printf "*   Database password:   ${MYSQL_PASSWORD}\n"
-CMD printf "*   Database host:       ${JAIL_IP}\n"
-CMD printf "* A backup of this information can be found in /root/.wordpress\n"
-CMD printf "*******************************************************************\n"
-
-printf "test"
+CMD printf "*******************************************************************\n* A Wordpress database was automatically created:\n*   Database name:       wordpress\n*   Database User:       wordpress\n*   Database password:   ${MYSQL_PASSWORD}\n*   Database host:       ${JAIL_IP}\n* A backup of this information can be found in /root/.wordpress\n*******************************************************************\n"
