@@ -2,7 +2,7 @@ PKG curl
 
 ARG MYSQL='/usr/local/bin/mysql'
 ARG MYSQL_PASSWORD="$(openssl rand -base64 30 | tr -cd '[:alnum:]')"
-ARG CURL='/usr/local/bin/curl '
+ARG CURL='/usr/local/bin/curl'
 ARG UNZIP='/usr/bin/unzip'
 
 CMD ${MYSQL} -u root -e "CREATE DATABASE wordpress"
@@ -35,3 +35,19 @@ CMD chmod 444 /usr/local/www/wordpress/.htaccess
 CMD chown -R www:www /usr/local/www/wordpress
 CMD find /usr/local/www/wordpress -type d -exec chmod 755 {} \;
 CMD find /usr/local/www/wordpress -type f -exec chmod 644 {} \;
+
+CMD touch /root/.wordpress
+CMD chown root:wheel /root/.wordpress
+CMD chmod 440 /root/.wordpress
+CMD printf "Database name:       wordpress\nDatabase user:       wordpress\nDatabase password:   ${MYSQL_PASSWORD}\nDatabase host:       ${JAIL_IP}\n" > /root/.wordpress
+
+CMD printf "*******************************************************************\n"
+CMD printf "* A Wordpress database was automatically created:\n"
+CMD printf "*   Database name:       wordpress\n"
+CMD printf "*   Database user:       wordpress\n"
+CMD printf "*   Database password:   ${MYSQL_PASSWORD}\n"
+CMD printf "*   Database host:       ${JAIL_IP}\n"
+CMD printf "* A backup of this information can be found in /root/.wordpress\n"
+CMD printf "*******************************************************************\n"
+
+printf "test"
