@@ -1,58 +1,87 @@
+
+########################################################################################
+# Copyright 2023 Nozel, Sebas Veeke.
+#
+# Licenced under a 3-Clause BSD License (https://opensource.org/license/bsd-3-clause).
+#
+# Contact:
+# > e-mail      mail@nozel.org
+# > GitHub      jail-templates
+########################################################################################
+
 # install required packages
 PKG curl
 
-# variables
-ARG CURL='/usr/local/bin/curl'
-ARG UNZIP='/usr/bin/unzip'
-ARG MYSQL='/usr/local/bin/mysql'
-ARG GENERATE_PASSWORD="$(openssl rand -base64 30 | tr -cd '[:alnum:]')"
-CMD printf "%s" "$GENERATE_PASSWORD" > /tmp/.mysql_password
+# general variables
+ARG UNZIP="/usr/bin/unzip"
+ARG CURL="/usr/local/bin/curl"
+ARG MYSQL="/usr/local/bin/mysql"
+ARG OPENSSL="/usr/bin/openssl"
+
+# generate passwords
+ARG GENERATE_PASSWORD="$(${OPENSSL} rand -base64 30 | tr -cd '[:alnum:]')"
+CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.mysql_password
+CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.owner_password
+
+# specific variables
+ARG MYSQL_DB="wordpress"
+ARG MYSQL_USER="wordpress"
 ARG MYSQL_PASSWORD="$(cat /tmp/.mysql_password)"
+ARG OWNER_USER="wordpress"
+ARG OWNER_GROUP="wordpress"
+ARG OWNER_PASSWORD="$(cat /tmp/.owner_password)"
+ARG WEB_USER="www"
+ARG WEB_GROUP="www"
+ARG WP_DOWNLOAD="https://wordpress.org/latest.zip"
+ARG WP_DIR="/usr/local/www/wordpress"
+
+# create owner
+CMD pw user add -n "${OWNER_USER}" -c 'System user for running Wordpress securely' -d /home/wordpress -m -s /bin/sh
+CMD echo "${OWNER_PASSWORD}" | pw usermod "${OWNER_USER}" -h 0
 
 # create wordpress database
-CMD ${MYSQL} -u root -e "CREATE DATABASE wordpress"
-CMD ${MYSQL} -u root -e "CREATE USER wordpress"
-CMD ${MYSQL} -u root -e "GRANT ALL PRIVILEGES ON wordpress.* TO wordpress@${JAIL_IP} IDENTIFIED BY '${MYSQL_PASSWORD}'"
-CMD ${MYSQL} -u root -e "FLUSH PRIVILEGES"
+CMD "${MYSQL}" -u root -e "CREATE DATABASE IF NOT EXISTS wordpress"
+CMD "${MYSQL}" -u root -e "GRANT ALL PRIVILEGES ON ${MYSQL_DB}.* TO ${MYSQL_USER}@${JAIL_IP} IDENTIFIED BY '${MYSQL_PASSWORD}'"
+CMD "${MYSQL}" -u root -e "FLUSH PRIVILEGES"
 
 # download and decompress wordpress
-CMD ${CURL} https://wordpress.org/latest.zip --output /tmp/latest.zip
-CMD ${UNZIP} /tmp/latest.zip -d /usr/local/www
+CMD "${CURL}" "${WP_DOWNLOAD}" --output /tmp/latest.zip
+CMD "${UNZIP}" /tmp/latest.zip -d /usr/local/www
 
 # generate wp-config.php
-CMD touch /usr/local/www/wordpress/wp-config.php
-CMD printf "<?php\n// ** Database settings ** //\n/** The name of the database for WordPress */\ndefine( 'DB_NAME', 'wordpress' );\n\n" > /usr/local/www/wordpress/wp-config.php
-CMD printf "/** Database username */\ndefine( 'DB_USER', 'wordpress' );\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/** Database password */\ndefine( 'DB_PASSWORD', '${MYSQL_PASSWORD}' );\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/** Database hostname */\ndefine( 'DB_HOST', '${JAIL_IP}' );\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/** Database charset to use in creating database tables. */\ndefine( 'DB_CHARSET', 'utf8mb4' );\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/** The database collate type. Don't change this if in doubt. */\ndefine( 'DB_COLLATE', '' );\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/**#@+\n * Authentication unique keys and salts.\n * Change these to different unique phrases! You can generate these using\n * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.\n * You can change these at any point in time to invalidate all existing cookies.\n * This will force all users to have to log in again.\n */\n" >> /usr/local/www/wordpress/wp-config.php
-CMD ${CURL} https://api.wordpress.org/secret-key/1.1/salt/ >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/**#@-*/\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/* WordPress database table prefix. */\n\$table_prefix = 'wp_';\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/* Add any custom values between this line and the 'stop editing' line. */\ndefine('FS_METHOD', 'direct');\n/* That's all, stop editing! Happy publishing. */\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n" >> /usr/local/www/wordpress/wp-config.php
-CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n" >> /usr/local/www/wordpress/wp-config.php
+CMD touch "${WP_DIR}/wp-config.php"
+CMD printf "<?php\n// ** Database settings ** //\ndefine( 'DB_NAME', '${MYSQL_DB}' );\ndefine( 'DB_USER', '${MYSQL_USER}' );\ndefine( 'DB_PASSWORD', '${MYSQL_PASSWORD}' );\ndefine( 'DB_HOST', '${JAIL_IP}' );\ndefine( 'DB_CHARSET', 'utf8mb4' );\ndefine( 'DB_COLLATE', '' );\n\n" >> "${WP_DIR}/wp-config.php"
+CMD printf "/**#@+\n * Authentication unique keys and salts.\n * Change these to different unique phrases! You can generate these using\n * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.\n * You can change these at any point in time to invalidate all existing cookies.\n * This will force all users to have to log in again.\n */\n" >> "${WP_DIR}/wp-config.php"
+CMD "${CURL}" https://api.wordpress.org/secret-key/1.1/salt/ >> "${WP_DIR}/wp-config.php"
+CMD printf "/**#@-*/\n\n" >> "${WP_DIR}/wp-config.php"
+CMD printf "/* WordPress database table prefix. */\n\$table_prefix = 'wp_';\n\n" >> "${WP_DIR}/wp-config.php"
+CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n" >> "${WP_DIR}/wp-config.php"
+CMD printf "/* Add any custom values between this line and the 'stop editing' line. */\ndefine('FS_METHOD', 'direct');\ndefine('DISALLOW_FILE_EDIT', true);\n/* That's all, stop editing! Happy publishing. */\n\n" >> "${WP_DIR}/wp-config.php"
+CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n" >> "${WP_DIR}/wp-config.php"
+CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n" >> "${WP_DIR}/wp-config.php"
 
 # generate .htaccess
-CMD touch /usr/local/www/wordpress/.htaccess
+CMD touch "${WP_DIR}/.htaccess"
 
 # set ownership and permissions
-CMD chown -R www:www /usr/local/www/wordpress
-CMD chmod 440 /usr/local/www/wordpress/wp-config.php
-CMD chmod 444 /usr/local/www/wordpress/.htaccess
-CMD find /usr/local/www/wordpress -type d -exec chmod 755 {} \;
-CMD find /usr/local/www/wordpress -type f -exec chmod 644 {} \;
+CMD chown -R "${OWNER_USER}":"${OWNER_GROUP}" "${WP_DIR}"
+CMD chown "${WEB_USER}":"${WEB_GROUP}" "${WP_DIR}/.htaccess"
+CMD chown "${WEB_USER}":"${WEB_GROUP}" "${WP_DIR}/wp-content"
+CMD chown -R "${WEB_USER}":"${WEB_GROUP}" "${WP_DIR}/wp-content/plugins"
+CMD chown -R "${WEB_USER}":"${WEB_GROUP}" "${WP_DIR}/wp-content/themes"
+CMD chmod 440 "${WP_DIR}/wp-config.php"
+CMD chmod 444 "${WP_DIR}/.htaccess"
+CMD find "${WP_DIR}" -type d -exec chmod 755 {} \;
+CMD find "${WP_DIR}" -type f -exec chmod 644 {} \;
+
+# generate, save and show account and database configuration
+CMD touch /root/.wordpress
+CMD chown root:wheel /root/.wordpress
+CMD chmod 440 /root/.wordpress
+CMD printf "Account name:\t\t${OWNER_USER}\nAccount group:\t\t${OWNER_GROUP}\nAccount password:\t${OWNER_PASSWORD}\n\nDatabase name:\t\t${MYSQL_DB}\nDatabase user:\t\t${MYSQL_USER}\nDatabase password:\t${MYSQL_PASSWORD}\nDatabase host:\t\t${JAIL_IP}\n" > /root/.wordpress
+CMD printf "*******************************************************************\n* A Wordpress FreeBSD account was automatically created:\n* Account name:\t\t${OWNER_USER}\n* Account group:\t${OWNER_GROUP}\n* Account password:\t${OWNER_PASSWORD}\n*\n* A Wordpress database was automatically created:\n* Database name:\t${MYSQL_DB}\n* Database user:\t${MYSQL_USER}\n* Database password:\t${MYSQL_PASSWORD}\n* Database host:\t${JAIL_IP}\n*\n* A backup of this information can be found in /root/.wordpress\n*******************************************************************\n"
 
 # remove temporary files
 CMD rm /tmp/latest.zip
 CMD rm /tmp/.mysql_password
-
-# generate and print database configuration
-CMD touch /root/.wordpress
-CMD chown root:wheel /root/.wordpress
-CMD chmod 440 /root/.wordpress
-CMD printf "Database name:       wordpress\nDatabase user:       wordpress\nDatabase password:   ${MYSQL_PASSWORD}\nDatabase host:       ${JAIL_IP}\n" > /root/.wordpress
-CMD printf "*******************************************************************\n* A Wordpress database was automatically created:\n*   Database name:\twordpress\n*   Database user:\twordpress\n*   Database password:\t${MYSQL_PASSWORD}\n*   Database host:\t${JAIL_IP}\n* A backup of this information can be found in /root/.wordpress\n*******************************************************************\n"
+CMD rm /tmp/.owner_password
