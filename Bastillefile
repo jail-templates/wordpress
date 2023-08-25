@@ -18,10 +18,11 @@ ARG CURL="/usr/local/bin/curl"
 ARG MYSQL="/usr/local/bin/mysql"
 ARG OPENSSL="/usr/bin/openssl"
 
-# generate passwords
+# generate primary passwords
 ARG GENERATE_PASSWORD="$(${OPENSSL} rand -base64 30 | tr -cd '[:alnum:]')"
 CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.mysql_password
 CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.owner_password
+CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.basicauth_password
 
 # specific variables
 ARG MYSQL_DB="wordpress"
@@ -30,6 +31,9 @@ ARG MYSQL_PASSWORD="$(cat /tmp/.mysql_password)"
 ARG OWNER_USER="wordpress"
 ARG OWNER_GROUP="wordpress"
 ARG OWNER_PASSWORD="$(cat /tmp/.owner_password)"
+ARG BASICAUTH_USER="wordpress"
+ARG BASICAUTH_PASSWORD="$(cat /tmp/.basicauth_password)"
+ARG BASICAUTH_PASSWORD_ENCRYPTED="$(${OPENSSL} passwd -apr1 ${BASICAUTH_PASSWORD})"
 ARG WEB_USER="www"
 ARG WEB_GROUP="www"
 ARG WP_DOWNLOAD="https://wordpress.org/latest.zip"
@@ -60,8 +64,11 @@ CMD printf "/* Add any custom values between this line and the 'stop editing' li
 CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n" >> "${WP_DIR}/wp-config.php"
 CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n" >> "${WP_DIR}/wp-config.php"
 
-# generate .htaccess
+# generate .htaccess and enable BasicAuth
 CMD touch "${WP_DIR}/.htaccess"
+CMD touch "${WP_DIR}/wp-admin/.htaccess"
+CMD printf "${BASICAUTH_USER}:${BASICAUTH_PASSWORD_ENCRYPTED}\n" >> "${WP_DIR}/.htpasswd"
+CMD printf "AuthUserFile ${WP_DIR}/.htpasswd\nAuthType basic\nAuthName \"ACCESS RESTRICTED\"\nrequire valid-user\n\n# Enable AJAX handler\n<Files admin-ajax.php>\n    Order allow,deny\n    Allow from all\n    Satisfy any\n</Files>\n" >> "${WP_DIR}/wp-admin/.htaccess"
 
 # set ownership and permissions
 CMD chown -R "${OWNER_USER}":"${OWNER_GROUP}" "${WP_DIR}"
@@ -78,10 +85,11 @@ CMD find "${WP_DIR}" -type f -exec chmod 644 {} \;
 CMD touch /root/.wordpress
 CMD chown root:wheel /root/.wordpress
 CMD chmod 440 /root/.wordpress
-CMD printf "Account name:\t\t${OWNER_USER}\nAccount group:\t\t${OWNER_GROUP}\nAccount password:\t${OWNER_PASSWORD}\n\nDatabase name:\t\t${MYSQL_DB}\nDatabase user:\t\t${MYSQL_USER}\nDatabase password:\t${MYSQL_PASSWORD}\nDatabase host:\t\t${JAIL_IP}\n" > /root/.wordpress
-CMD printf "*******************************************************************\n* A Wordpress FreeBSD account was automatically created:\n* Account name:\t\t${OWNER_USER}\n* Account group:\t${OWNER_GROUP}\n* Account password:\t${OWNER_PASSWORD}\n*\n* A Wordpress database was automatically created:\n* Database name:\t${MYSQL_DB}\n* Database user:\t${MYSQL_USER}\n* Database password:\t${MYSQL_PASSWORD}\n* Database host:\t${JAIL_IP}\n*\n* A backup of this information can be found in /root/.wordpress\n*******************************************************************\n"
+CMD printf "Account name:\t\t${OWNER_USER}\nAccount group:\t\t${OWNER_GROUP}\nAccount password:\t${OWNER_PASSWORD}\n\nBasicAuth user:\t\t${BASICAUTH_USER}\nBasicAuth password:\t${BASICAUTH_PASSWORD}\n\nDatabase name:\t\t${MYSQL_DB}\nDatabase user:\t\t${MYSQL_USER}\nDatabase password:\t${MYSQL_PASSWORD}\nDatabase host:\t\t${JAIL_IP}\n" > /root/.wordpress
+CMD printf "*******************************************************************\n* A Wordpress FreeBSD account was automatically created:\n* Account name:\t\t${OWNER_USER}\n* Account group:\t${OWNER_GROUP}\n* Account password:\t${OWNER_PASSWORD}\n*\n* A BasicAuth account to access wp-admin was automatically created:\n* BasicAuth user:\t${BASICAUTH_USER}\n* BasicAuth password:\t${BASICAUTH_PASSWORD}\n*\n* A Wordpress database was automatically created:\n* Database name:\t${MYSQL_DB}\n* Database user:\t${MYSQL_USER}\n* Database password:\t${MYSQL_PASSWORD}\n* Database host:\t${JAIL_IP}\n*\n* A backup of this information can be found in /root/.wordpress\n*******************************************************************\n"
 
 # remove temporary files
 CMD rm /tmp/latest.zip
 CMD rm /tmp/.mysql_password
 CMD rm /tmp/.owner_password
+CMD rm /tmp/.basicauth_password
