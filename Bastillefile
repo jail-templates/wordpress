@@ -5,8 +5,8 @@ PKG curl
 ARG CURL='/usr/local/bin/curl'
 ARG UNZIP='/usr/bin/unzip'
 ARG MYSQL='/usr/local/bin/mysql'
-ARG MYSQL_PASSWORD="$(openssl rand -base64 30 | tr -cd '[:alnum:]')"
-CMD printf "%s" "$MYSQL_PASSWORD" > /tmp/.mysql_password
+ARG GENERATE_PASSWORD="$(openssl rand -base64 30 | tr -cd '[:alnum:]')"
+CMD printf "%s" "$GENERATE_PASSWORD" > /tmp/.mysql_password
 ARG MYSQL_PASSWORD="$(cat /tmp/.mysql_password)"
 
 # create wordpress database
