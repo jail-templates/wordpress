@@ -32,6 +32,27 @@ bastille bootstrap https://github.com/jail-templates/wordpress
 bastille template $JAIL jail-templates/wordpress
 ```
 
+## WordPress behind proxy
+Add the following to `wp-config.php` and replace `domain.tld` with your domain name to run WordPress behind a proxy:
+```
+// ** Proxy settings ** //
+define('.COOKIE_DOMAIN.', 'domain.tld');
+define('.SITECOOKIEPATH.', '.');
+
+if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $list = explode(',',$_SERVER['HTTP_X_FORWARDED_FOR']);
+        $_SERVER['REMOTE_ADDR'] = $list[0];
+  }
+define( 'WP_HOME', 'https://domain.tld' );
+define( 'WP_SITEURL', 'https://domain.tld' );
+$_SERVER['HTTP_HOST'] = 'domain.tld';
+$_SERVER['REMOTE_ADDR'] = 'domain.tld';
+$_SERVER[ 'SERVER_ADDR' ] = 'domain.tld';
+
+if ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
+       $_SERVER['HTTPS']='on';
+```
+
 ## Hardening Wordpress
 This template strikes a balance between security and being accessible/useful for users. If you feel these settings are not paranoid enough, WordPress can be hardened further as follows:
 
