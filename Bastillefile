@@ -13,33 +13,37 @@
 PKG curl
 
 # general variables
-ARG UNZIP="/usr/bin/unzip"
-ARG CURL="/usr/local/bin/curl"
-ARG MYSQL="/usr/local/bin/mysql"
-ARG OPENSSL="/usr/bin/openssl"
-ARG LINE="*******************************************************************"
+ARG UNZIP=/usr/bin/unzip
+ARG CURL=/usr/local/bin/curl
+ARG MYSQL=/usr/local/bin/mysql
+ARG OPENSSL=/usr/bin/openssl
+ARG LINE=*******************************************************************
 
-# generate primary passwords
-ARG GENERATE_PASSWORD="$(${OPENSSL} rand -base64 30 | tr -cd '[:alnum:]')"
+# generate passwords and salt
+ARG GENERATE_PASSWORD=$(head -c 256 /dev/urandom | strings -n 1 | tr -cd '[:alnum:]' | head -c 32)
 CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.mysql_password
 CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.owner_password
 CMD printf "%s" "${GENERATE_PASSWORD}" > /tmp/.basicauth_password
+ARG GENERATE_SALT=$(head -c 512 /dev/urandom | strings -n 1 | tr -cd '[:alnum:]~#$^*+=_()[]{}<>:;.,/?' | head -c 64)
 
 # specific variables
-ARG MYSQL_DB="wordpress"
-ARG MYSQL_USER="wordpress"
-ARG MYSQL_PASSWORD="$(cat /tmp/.mysql_password)"
-ARG OWNER_USER="wordpress"
-ARG OWNER_GROUP="wordpress"
-ARG OWNER_PASSWORD="$(cat /tmp/.owner_password)"
-ARG BASICAUTH_USER="wordpress"
-ARG BASICAUTH_PASSWORD="$(cat /tmp/.basicauth_password)"
-ARG BASICAUTH_PASSWORD_ENCRYPTED="$(${OPENSSL} passwd -apr1 ${BASICAUTH_PASSWORD})"
-ARG WEB_USER="www"
-ARG WEB_GROUP="www"
-ARG WEB_DIR="/usr/local/www"
-ARG WP_DOWNLOAD="https://wordpress.org/latest.zip"
-ARG WP_DIR="/usr/local/www/wordpress"
+ARG MYSQL_DB=wordpress
+ARG MYSQL_USER=wordpress
+ARG MYSQL_PASSWORD=$(cat /tmp/.mysql_password)
+ARG MYSQL_CHARSET=utf8mb4
+ARG MYSQL_PREFIX=wp_
+ARG MYSQL_COLLATION=
+ARG OWNER_USER=wordpress
+ARG OWNER_GROUP=wordpress
+ARG OWNER_PASSWORD=$(cat /tmp/.owner_password)
+ARG BASICAUTH_USER=wordpress
+ARG BASICAUTH_PASSWORD=$(cat /tmp/.basicauth_password)
+ARG BASICAUTH_PASSWORD_ENCRYPTED=$(${OPENSSL} passwd -apr1 ${BASICAUTH_PASSWORD})
+ARG WEB_USER=www
+ARG WEB_GROUP=www
+ARG WEB_DIR=/usr/local/www
+ARG WP_DOWNLOAD=https://wordpress.org/latest.zip
+ARG WP_DIR=/usr/local/www/wordpress
 
 # create owner
 CMD pw user add -n "${OWNER_USER}" -c 'System user for running Wordpress securely' -d /home/wordpress -m -s /bin/sh
@@ -54,23 +58,27 @@ CMD "${MYSQL}" -u root -e "FLUSH PRIVILEGES"
 CMD "${CURL}" "${WP_DOWNLOAD}" --output /tmp/latest.zip
 CMD "${UNZIP}" /tmp/latest.zip -d /usr/local/www
 
-# generate wp-config.php
-CMD touch "${WEB_DIR}/wp-config.php"
-CMD printf "<?php\n// ** Database settings ** //\ndefine( 'DB_NAME', '${MYSQL_DB}' );\ndefine( 'DB_USER', '${MYSQL_USER}' );\ndefine( 'DB_PASSWORD', '${MYSQL_PASSWORD}' );\ndefine( 'DB_HOST', '${JAIL_IP}' );\ndefine( 'DB_CHARSET', 'utf8mb4' );\ndefine( 'DB_COLLATE', '' );\n\n" >> "${WEB_DIR}/wp-config.php"
-CMD printf "/**#@+\n * Authentication unique keys and salts.\n * Change these to different unique phrases! You can generate these using\n * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.\n * You can change these at any point in time to invalidate all existing cookies.\n * This will force all users to have to log in again.\n */\n" >> "${WEB_DIR}/wp-config.php"
-CMD "${CURL}" https://api.wordpress.org/secret-key/1.1/salt/ >> "${WEB_DIR}/wp-config.php"
-CMD printf "/**#@-*/\n\n" >> "${WEB_DIR}/wp-config.php"
-CMD printf "/* WordPress database table prefix. */\n\$table_prefix = 'wp_';\n\n" >> "${WEB_DIR}/wp-config.php"
-CMD printf "/* For developers: WordPress debugging mode. */\ndefine( 'WP_DEBUG', false );\n\n" >> "${WEB_DIR}/wp-config.php"
-CMD printf "/* Add any custom values between this line and the 'stop editing' line. */\ndefine('FS_METHOD', 'direct');\ndefine('DISALLOW_FILE_EDIT', true);\n/* That's all, stop editing! Happy publishing. */\n\n" >> "${WEB_DIR}/wp-config.php"
-CMD printf "/** Absolute path to the WordPress directory. */\nif ( ! defined( 'ABSPATH' ) ) {\n        define( 'ABSPATH', __DIR__ . '/' );\n}\n\n" >> "${WEB_DIR}/wp-config.php"
-CMD printf "/** Sets up WordPress vars and included files. */\nrequire_once ABSPATH . 'wp-settings.php';\n\n" >> "${WEB_DIR}/wp-config.php"
+# copy files
+CP usr /
 
-# generate .htaccess and enable BasicAuth
-CMD touch "${WP_DIR}/.htaccess"
-CMD printf '# Block wp-config.php.\n<files wp-config.php>\norder allow,deny\ndeny from all\n</files>\n\n# Block the include-only files.\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteBase /\nRewriteRule ^wp-admin/includes/ - [F,L]\nRewriteRule !^wp-includes/ - [S=3]\nRewriteRule ^wp-includes/[^/]+%s.php$ - [F,L]\nRewriteRule ^wp-includes/js/tinymce/langs/.+%s.php - [F,L]\nRewriteRule ^wp-includes/theme-compat/ - [F,L]\n</IfModule>\n\n# BEGIN WordPress\n\n# END WordPress\n' "\\" "\\" >> "${WP_DIR}/.htaccess"
-CMD touch "${WP_DIR}/wp-admin/.htaccess"
-CMD printf "AuthUserFile ${WEB_DIR}/.htpasswd\nAuthType basic\nAuthName \"ACCESS RESTRICTED\"\nrequire valid-user\n\n# Enable AJAX handler\n<Files admin-ajax.php>\nOrder allow,deny\nAllow from all\nSatisfy any\n</Files>\n" >> "${WP_DIR}/wp-admin/.htaccess"
+# generate wp-config.php
+CMD sed -i '' 's%insert_db_name%${MYSQL_DB}%g' "${WEB_DIR}/wp-config.php"
+CMD sed -i '' 's%insert_db_user%${MYSQL_USER}%g' "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_db_password%${MYSQL_PASSWORD}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' 's%insert_db_host%${JAIL_IP}%g' "${WEB_DIR}/wp-config.php"
+CMD sed -i '' 's%insert_db_charset%${MYSQL_CHARSET}%g' "${WEB_DIR}/wp-config.php"
+CMD sed -i '' 's%insert_db_collation%${MYSQL_COLLATION}%g' "${WEB_DIR}/wp-config.php"
+CMD sed -i '' 's%insert_db_prefix%${MYSQL_PREFIX}%g' "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_auth_key%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_secure_auth_key%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_logged_in_key%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_nonce_key%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_auth_salt%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_secure_auth_salt%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_logged_in_salt%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+CMD sed -i '' "s%insert_nonce_salt%${GENERATE_SALT}%g" "${WEB_DIR}/wp-config.php"
+
+# enable BasicAuth
 CMD touch "${WEB_DIR}/.htpasswd"
 CMD printf "${BASICAUTH_USER}:${BASICAUTH_PASSWORD_ENCRYPTED}\n" >> "${WEB_DIR}/.htpasswd"
 
