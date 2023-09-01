@@ -3,14 +3,12 @@
 
 # disable access to XML-RPC
 <Files xmlrpc.php>
-    order deny,allow
-    deny from all
+    Require all denied
 </Files>
 
 # disable access to wp-config.php.
 <files wp-config.php>
-    order allow,deny
-    deny from all
+    Require all denied
 </files>
 
 # rewrite rules

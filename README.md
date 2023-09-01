@@ -78,44 +78,16 @@ Change ownership of `wp-content` and all subdirectories (including `wp-content`)
 By default this template grants all database privileges to the MySQL user `wordpress`. For normal WordPress operations the MySQL user only needs data read and data write privileges (i.e. `SELECT`, `INSERT`, `UPDATE` and `DELETE`). Limiting these privileges improves the security of WordPress. Do note that some plugins, themes and major WordPress updates might require more privileges. Your mileage may vary.
 
 ### Restrict access to `wp-admin` further
-By default this template enables BasicAuth (username/password authentication) on the `wp-admin` backend. Although potential adversaries can't access `wp-admin` this way, they can still try to brute-force the BasicAuth credentials. The easiest way to mitigate this risk is by allowing only certain IP addresses to access `wp-admin`. This can be one (e.g. home) or multiple (e.g. for home, work and VPN) IP addresses. To do this, add the following to `/usr/local/www/wordpress/wp-admin/.htaccess`: 
+By default this template enables Basic Authentication (username/password authentication) on the `wp-admin` backend. Although potential adversaries can't access `wp-admin` this way, they can still try to brute-force the BasicAuth credentials. The easiest way to mitigate this risk is by allowing only certain IP addresses to access `wp-admin`. This can be one (e.g. home) or multiple (e.g. for home, work and VPN) IP addresses. To do this, add the following to `/usr/local/www/wordpress/wp-admin/.htaccess`: 
 ```
-<LIMIT GET>
-    order deny,allow
-    deny from all
-
-    # single IP address
-    allow from x.x.x.x
-
-    # multiple IP addresses
-    allow from x.x.x.x
-    allow from x.x.x.x
-    allow from x.x.x.x
-
-    # IP subnet
-    allow from x.x.x.x/28
-</LIMIT>
+# require IP address
+require ip x.x.x.x # home IP
+require ip x.x.x.x # work IP
+require ip x.x.x.x # VPN IP
+require ip x.x.x.x/28 # subnet
+satisfy any
 ```
-The other way around is possible as well: specific IP addresses or subnets can be denied access by adding `deny from x.x.x.x`. This way you could filter certain countries, organizations or malicious/abusive systems. To do this, add the following to `/usr/local/www/wordpress/wp-admin/.htaccess`:
-```
-<Limit GET POST>
-    order allow,deny
-
-    # single IP address
-    deny from x.x.x.x
-
-    # multiple IP addresses
-    deny from x.x.x.x
-    deny from x.x.x.x
-    deny from x.x.x.x
-
-    # IP subnet
-    deny from x.x.x.x/28
-
-    allow from all
-</Limit>
-```
-Note that increasing the amount of rules significantly will impact performance negatively.
+If you want to circumvent the Basic Authentication (that is setup by default) when you connect from one of these IP addresses, use `satisfy any`. Note that increasing the amount of rules significantly can impact performance negatively.
 
 ## Support
 Templates will be maintained until their respective software version is end-of-life. Repositories will then be archived and removed from any meta-templates.

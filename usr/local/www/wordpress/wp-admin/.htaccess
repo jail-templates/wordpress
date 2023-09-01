@@ -9,7 +9,6 @@ require valid-user
 
 # enable AJAX handler
 <Files admin-ajax.php>
-Order allow,deny
-Allow from all
-Satisfy any
+    require all granted
+    Satisfy any
 </Files>
