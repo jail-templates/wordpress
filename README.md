@@ -68,6 +68,8 @@ After the WordPress instance has been installed and initialized, the WordPress i
 6. Configure the Multisite to taste press "Install". Add the listed changes to `wp-config.php` (Preferably between `/* Add any custom values ... */` and `/* That's all, stop editing! ... */`.) and `.htaccess`.
 7. Refresh WordPress and login again. Your WordPress instance is now converted to a WordPress Multisite \o/.
 
+If you run the multisite from behind a proxy (also see "WordPress behind proxy"), make sure `define( 'WP_HOME', 'https://domain.tld' );`, `define( 'WP_SITEURL', 'https://domain.tld' );` and `$_SERVER['HTTP_HOST'] = 'domain.tld';` are commented or removed.
+
 ## Harden Wordpress
 This template strikes a balance between security and being accessible/useful for users. If you feel these settings are not paranoid enough, WordPress can be hardened further as follows:
 
